@@ -1,0 +1,347 @@
+import {squeeze, zeros, index, inv, subtract, subset, matrix, multiply, transpose, det, Number} from 'mathjs'
+/*
+export function Vertices({vset}){
+  let str = "[";
+  for (let i in vset){
+    str = str + vset[i] + ",";
+  }
+  return( <div key={"v"+str}> {str+"]"} </div>)
+}
+*/
+
+export function Edges(E){
+  let str = "";
+  for (let i in E){
+    str = str + "[" + E[i][0] + "," + E[i][1] + "]"
+  }
+  return( <div> {str} </div>);
+}
+
+export function neighbors(v,E){
+  const nei = [];
+  for (let e of E){
+    if (v == e[0]){
+      nei.push(e[1]);
+    }
+    else if (v == e[1]){
+      nei.push(e[0]);
+    }
+  }
+  return nei;
+}
+
+
+export function incidentEdges(v, V, E){
+  const inc = [];
+  for (let i of E.keys()){
+    if (v == E[i][0]){
+      inc.push({idx:i, dir:1});
+    }
+    else if (v == E[i][1]){
+      inc.push({idx:i, dir:-1});
+    }
+  }
+  return inc;
+}
+
+export function CyclesFrom({start, length, V, E}){
+  const vpaths = []
+  const epaths = []
+  
+  function visit(w, vpath, epath, l){
+    //if (l <= 1 && neighbors(w).includes(start)){
+    if (l <= 0 && w == start){
+      vpaths.push(vpath.slice());
+      epaths.push(epath.slice());
+      return;
+    }
+    else if (l <= 0){
+      return;
+    }
+    
+    for (let e of incidentEdges(w,V,E)){
+      let n;
+      if (e.dir == 1) {
+	n = E[e.idx][1];
+      }
+      else {
+	n = E[e.idx][0];
+      }
+      if (vpath.includes(n) || n<start) {
+	continue;
+      }
+      let newVpath = vpath.slice();
+      newVpath.push(n);
+      let newEpath = epath.slice();
+      newEpath.push(e);
+    
+      visit(n, newVpath, newEpath, l-1);
+    }
+  }
+    
+  function coefvector(epath){
+    const coef = Array(E.length);
+    coef.fill(0);
+    for (let edge of epath){
+      coef[edge.idx]=edge.dir;
+    }
+    return coef;
+  }
+  
+  visit(start,[],[],length);
+  //console.log(epaths.map(coefvector));
+  return(epaths.map((epath)=><Vertices key={coefvector(epath)} vset={coefvector(epath)}/>));
+}
+
+export function cyclesFrom(start,length,V,E){
+  const vpaths = []
+  const epaths = []
+  
+  function visit(w, vpath, epath, l){
+    //console.log(w,epath);
+    if (l <= 0 && w == start){
+      vpaths.push(vpath.slice());
+      epaths.push(epath.slice());
+      return;
+    }
+    else if (l <= 0){
+      return;
+    }
+    
+    for (let e of incidentEdges(w,V,E)){
+      //const n = (e.dir == 1 ? E[e.idx][1] : E[e.idx][0]);
+      let n;
+      if (e.dir == 1) {
+      	n = E[e.idx][1];
+      }
+      else {
+      	n = E[e.idx][0];
+      }
+      if (epath.map((el)=>el.idx).includes(e.idx)) {
+      	continue;
+      }
+      //if (vpath.includes(n) || start > n ) {
+      //	continue;
+      //}
+      let newVpath = vpath.slice();
+      newVpath.push(n);
+      let newEpath = epath.slice();
+      newEpath.push(e);
+      visit(n, newVpath, newEpath, l-1);
+    }
+  }
+
+  function coefvector(epath){
+    const coef = Array(E.length);
+    coef.fill(0);
+    for (let edge of epath){
+      coef[edge.idx]=edge.dir;
+    }
+    return coef;
+  }
+  
+  visit(start,[],[],length);
+  return(epaths.map((epath)=>coefvector(epath)));
+}
+
+
+function incidenceMatrix(V, E){
+  const A = [];
+  console.log(cyclesFrom(0,3,V,E));
+  //for (let length=2; length<=10; length++){
+  //for (let length=2; length<=E.length; length++){
+  //for (let length=E.length-1; length>=2; length--){
+  for (let length = 4; length >= 2; length--){
+    if (A.length >= E.length - V.length + 1 ){
+      break;
+    }
+    for (let i = 0; i < V.length; i++){
+      const newcycles = cyclesFrom(i,length,V,E);
+      for (let c of newcycles){
+	const M=A.slice();
+	M.push(c);
+	const B = matrix(M);
+	if (Math.abs(det(multiply(B,transpose(B))))>0.01){
+	  A.push(c);
+	}
+      }
+    }
+  }
+  return A;
+}
+
+export function getA(V,E){
+  const M = incidenceMatrix(V,E);
+  return(multiply(M,transpose(M)));
+}
+
+export function Gamma(V,E){
+  
+  const A = getA(V,E);
+  const b = A.length;
+  const lowids = Array(b-2);
+
+  for (let i=0; i<b-2; i++){
+    lowids[i]=i+2;
+  }
+
+  if (b == 2){
+    return(A);
+  }
+  
+  const A11 = subset(A, index([0,1],[0,1]));
+  const A12 = subset(A, index([0,1], lowids));
+  const A21 = subset(A, index(lowids, [0,1]));
+  const A22 = subset(A, index(lowids, lowids));
+  const Gamma = subtract(A11, multiply(multiply(A12, inv(A22)),A21));
+  return(Gamma);
+}
+
+export function choleskyDecomposition(A) {
+  const n = A.length;
+  const L = zeros(n, n)._data;
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j <= i; j++) {
+      let sum = 0;
+
+      for (let k = 0; k < j; k++) {
+        sum += L[i][k] * L[j][k];
+      }
+
+      if (i === j) {
+        L[i][j] = Math.sqrt(A[i][i] - sum);
+      } else {
+        L[i][j] = (1.0 / L[j][j]) * (A[i][j] - sum);
+      }
+    }
+  }
+  return L;
+}
+
+export function periodBase(V,E){
+  return(choleskyDecomposition(Gamma(V,E)));
+}
+
+//export function CyclesOfLength({length, V}){
+//  return(V.map((v) => <CyclesFrom key={v+""+length} start={v} length={length}/>));
+//}
+
+export function Lattice2D({V,E}){
+  console.log(V,E);
+  const scale = 100;
+  const m = 5;
+  const indices = Array.from({length:(2*m+1)},(e,i)=>i-m);
+  const fund = fundDomain(scale,V,E);
+
+  function lattice1D(s,v){
+    const line = [];
+    for (let i of indices){
+      const orgx = s[0]+i*v[0];
+      const orgy = s[1]+i*v[1];
+      const key = "f" + s[0] + s[1] + i;
+      line.push(<g key={key} transform={"translate(" + orgx*scale  + "," + orgy*scale + ")"}>{fund}</g>);
+    }
+    return line;
+  }
+
+  const base=periodBase(V, E);
+  const lines = [];
+  for (let i of indices){
+    lines.push(lattice1D([base[1][0]*i, base[1][1]*i], base[0]));
+  }
+  return( <>{lines}</> );
+}
+
+export function fundDomain(scale,V,E){
+  console.log(V,E);
+  const C = multiply(inv(getA(V,E)),incidenceMatrix(V,E));
+  const C0 = subset(C, index([0,1], Array.from({length:E.length},(e,i)=>i)));
+  const period=transpose(periodBase(V,E));
+  const V0 = multiply(period, C0);
+  console.log(V0);
+  //const [ecount, setEcount] = useState(0);
+  let ecount = 0;
+
+  function endpoint(edge, p){
+    const v = squeeze(subset(V0, index([0,1], edge.idx)));
+    return([p[0]+edge.dir*v[0], p[1]+edge.dir*v[1]]);
+  }
+
+  function line(p,q,ec){
+    //setEcount((ecount)=>ecount+1);
+    ecount += 1;
+    const key = "key" + ecount;
+    return(<line key={key} strokeOpacity={1} strokeWidth={1} x1={scale*p[0]} y1={scale*p[1]} x2={scale*q[0]} y2={scale*q[1]} stroke="blue"> </line>);
+  }
+
+  function coordPB(p){
+    return multiply(inv(transpose(period)),p);
+  }
+
+  function floorCoord(p){
+    const x = coordPB(p)[0]+10;
+    const y = coordPB(p)[1]+10;
+    return([x-Math.floor(x), y-Math.floor(y)]);
+  }
+
+  function dist(p,q){
+    return(Math.sqrt((p[0]-q[0])*(p[0]-q[0])+(p[1]-q[1])*(p[1]-q[1])));
+  }
+  
+  function visitPoints(v, p, depth){
+
+    if (depth > 5){
+      return;
+    }
+    for (let q of visitedPoints[v]){
+      if (dist(q,p) < 0.001) {
+	return
+      }
+    }
+    visitedPoints[v].push(p);
+
+    let ecount = 0;
+    for (let e of incidentEdges(v,V,E)){
+      const q = endpoint(e,p);
+      lines.push(line(p,q,ecount));
+      const f = (e.dir==1 ? E[e.idx][1] : E[e.idx][0]);
+      visitPoints(f, q, depth+1);
+      ecount++;
+    }
+  }
+  
+  function visitEdges(edge, p){
+    //if (visited.includes(edge.idx)){
+    if (visited[edge.idx]>=2){
+      return;
+    }
+    console.log(floorCoord(p));
+    //visited.push(edge.idx);
+    visited[edge.idx]+=1;
+    const f = (edge.dir==1 ? E[edge.idx][1] : E[edge.idx][0]);
+    let ecount = 0;
+    for (let e of incidentEdges(f,V,E)){
+      const q = endpoint(e,p);
+      lines.push(line(p,q,ecount));
+      visitEdges(e, q);
+      ecount++;
+    }
+  }
+
+  //const visited = [];
+  const visited = Array(E.length).fill(0);
+  const visitedPoints = Array(V.length).fill([]);
+  console.log(V0.length,visitedPoints.length);
+  const lines = [];
+  let start:{idx:number; dir:number}
+  start ={idx:0, dir:1}
+  visitEdges(start,[0,0]);
+  //visitPoints(0,[0,0],0);
+  //return visited;
+  //console.log(lines.length);
+  console.log(visitedPoints);
+  //console.log(visited);
+  //return(<g key={key} transform={"translate(" + scale*translate.x + "," + scale*translate.y + ")"}> {lines} </g>);
+  return(lines);
+}

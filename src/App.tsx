@@ -1,0 +1,79 @@
+import { useState } from 'react'
+import './App.css'
+import {Stack, Button, TextareaAutosize} from '@mui/material';
+import {Lattice2D} from './StdReal.tsx';
+
+function App() {
+
+  const [drawing, setDrawing] = useState<boolean>(false);
+  const [eString, setEString] = useState("");
+  const [E, setE] = useState<number[][]>([]);
+  const [V, setV] = useState<number[]>([]);
+
+  function eStringHandler(s:string){
+    setEString(s);
+  }
+  
+  function draw(){
+    setDrawing((prev)=>!prev);
+    const edgeStrs = eString.split("\n");
+    const edges = edgeStrs.map((es)=>es.split(",").map((vs)=>parseInt(vs,10)));
+    setE(()=>edges);
+    const vertices:number[] = [];
+    for (let e of edges){
+      if ( !vertices.includes(e[0])){
+	vertices.push(e[0])
+      }
+      if ( !vertices.includes(e[1])){
+	vertices.push(e[1])
+      }
+    }
+    setV(()=>vertices);
+    console.log(vertices);
+  }
+
+  
+  return (
+    <>
+	    <Stack>
+	      <Stack >
+		<Stack direction="row">
+		  <Button variant="contained" onClick={draw}>
+		    {drawing? "reset":"draw"}
+		  </Button>
+		</Stack>
+		{ drawing? <></>:
+		  (
+		      <Stack direction="row">
+			<TextareaAutosize key="areaB"
+					  minRows={10}
+					  maxRows={10}
+					  placeholder="edges"
+					  onChange={(e)=>eStringHandler(e.target.value)}
+					  style={{width:300}}
+			/>
+		      </Stack>
+		    )
+		  }
+		</Stack>
+		<Stack>
+		  {drawing?(
+		    <>
+		    <>{V}</>
+		    <svg width={800} height={600}>
+		      {<Lattice2D V={V} E={E}></Lattice2D>}
+ 		    </svg>
+		    </>
+		    ):
+		  (<></>)}
+		</Stack>
+	    </Stack>
+    </>
+  )
+}
+//		  {fundDomain(50)}
+//      <div className="card">
+//	  <PathsOfLength length={1}/>
+//      </div>"
+
+export default App
