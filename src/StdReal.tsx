@@ -1,5 +1,5 @@
 import * as math from 'mathjs';
-import { Matrix } from 'mathjs';
+//import { Matrix } from 'mathjs';
 
 export function Vertices({vset}:any){
   let str = "[";
@@ -34,7 +34,8 @@ export function neighbors(v:number,E:number[][]){
 
 export function incidentEdges(v:number,  E:number[][]){
   const inc = [];
-  for (let i of E.keys()){
+  //for (let i of E.keys()){
+  for (let i =0; i < E.length; i++){
     if (v == E[i][0]){
       inc.push({idx:i, dir:1});
     }
@@ -152,7 +153,7 @@ function incidenceMatrix(V:number[], E:number[][]){
   //for (let length=2; length<=10; length++){
   //for (let length=2; length<=E.length; length++){
   //for (let length=E.length-1; length>=2; length--){
-  for (let length = 4; length >= 2; length--){
+  for (let length = 6; length >= 2; length--){
     if (A.length >= E.length - V.length + 1 ){
       break;
     }
@@ -229,11 +230,13 @@ export function periodBase(V:number[],E:number[][]){
 //  return(V.map((v) => <CyclesFrom key={v+""+length} start={v} length={length}/>));
 //}
 
-export function Lattice2D({V,E}:{V:number[], E:number[][]}){
+export function Lattice2D({V,E}:
+			  {V:number[], E:number[][]}){
   console.log(V,E);
   const scale = 100;
   const m = 5;
   const indices = Array.from({length:(2*m+1)},(_,i)=>i-m);
+  //const indices = [0];
   const fund = fundDomain(scale,V,E);
 
   function lattice1D(s:number[], v:number[]){
@@ -242,7 +245,9 @@ export function Lattice2D({V,E}:{V:number[], E:number[][]}){
       const orgx = s[0]+i*v[0];
       const orgy = s[1]+i*v[1];
       const key = "f" + s[0] + s[1] + i;
-      line.push(<g key={key} transform={"translate(" + orgx*scale  + "," + orgy*scale + ")"}>{fund}</g>);
+      const transform = "translate(" + orgx*scale  + "," + orgy*scale + ")";
+      line.push(<g key={key}
+		   transform={transform}>{fund}</g>);
     }
     return line;
   }
@@ -250,13 +255,14 @@ export function Lattice2D({V,E}:{V:number[], E:number[][]}){
   const base=periodBase(V, E);
   const lines = [];
   for (let i of indices){
+  //for (let i of [1,2]){
     lines.push(lattice1D([base[1][0]*i, base[1][1]*i], base[0]));
   }
   return( <>{lines}</> );
 }
 
 export function fundDomain(scale:number, V:number[], E:number[][]){
-  console.log(V,E);
+  //console.log(V,E);
   const C = math.multiply(math.inv(getA(V,E)),incidenceMatrix(V,E));
   const C0:Matrix = math.subset(C, math.index([0,1], Array.from({length:E.length},(_,i)=>i)));
   const period=math.transpose(periodBase(V,E));
@@ -266,15 +272,19 @@ export function fundDomain(scale:number, V:number[], E:number[][]){
   let ecount = 0;
 
   function endpoint(edge:any, p:number[]){
-    const v:any = math.squeeze(math.subset(V0 as Matrix, math.index([0,1], edge.idx))  as math.MathCollection<math.MathNumericType>);
+    const v:any = math.squeeze(math.subset(V0 as Matrix,
+					   math.index([0,1], edge.idx))  as math.MathCollection<math.MathNumericType>);
     return([p[0]+edge.dir*v[0], p[1]+edge.dir*v[1]]);
   }
 
   function line(p:number[],q:number[]){
-    //setEcount((ecount)=>ecount+1);
     ecount += 1;
     const key = "key" + ecount;
-    return(<line key={key} strokeOpacity={1} strokeWidth={1} x1={scale*p[0]} y1={scale*p[1]} x2={scale*q[0]} y2={scale*q[1]} stroke="blue"> </line>);
+    return(<line key={key} strokeOpacity={1}
+		 strokeWidth={1}
+		 x1={scale*p[0]} y1={scale*p[1]}
+		 x2={scale*q[0]} y2={scale*q[1]}
+		 stroke="blue"/>);
   }
 
   function coordPB(p:any){
@@ -287,42 +297,41 @@ export function fundDomain(scale:number, V:number[], E:number[][]){
     return([x-Math.floor(x), y-Math.floor(y)]);
   }
 
-  //function dist(p:any,q:any){
-  //  return(Math.sqrt((p[0]-q[0])*(p[0]-q[0])+(p[1]-q[1])*(p[1]-q[1])));
-  //}
+  function dist(p:any,q:any){
+    return(Math.sqrt((p[0]-q[0])*(p[0]-q[0])+(p[1]-q[1])*(p[1]-q[1])));
+  }
   
-  //function visitPoints(v:any, p:any, depth:number){
-  //
-  //  if (depth > 5){
-  //    return;
-  //  }
-  //  for (let q of visitedPoints[v]){
-  //    if (dist(q,p) < 0.001) {
-  //	return
-  //    }
-  //  }
-  //  visitedPoints[v].push(p);
-  //
-  //  let ecount = 0;
-  //  for (let e of incidentEdges(v,E)){
-  //    const q = endpoint(e,p);
-  //    lines.push(line(p,q));
-  //    const f = (e.dir==1 ? E[e.idx][1] : E[e.idx][0]);
-  //    visitPoints(f, q, depth+1);
-  //    ecount++;
-  //  }
-  //}
+  function visitPoints(v:any, p:any, depth:number){
   
-  function visitEdges(edge:any, p:any){
-    //if (visited.includes(edge.idx)){
-    if (visited[edge.idx]>=2){
+    if (depth > 3){
       return;
     }
-    console.log(floorCoord(p));
-    //visited.push(edge.idx);
+    for (let q of visitedPoints[v]){
+      if (dist(q,p) < 0.001) {
+  	return
+      }
+    }
+    visitedPoints[v].push(p);
+  
+    let ecount = 0;
+    for (let e of incidentEdges(v,E)){
+      const q = endpoint(e,p);
+      lines.push(line(p,q));
+      const f = (e.dir==1 ? E[e.idx][1] : E[e.idx][0]);
+      visitPoints(f, q, depth+1);
+      ecount++;
+    }
+  }
+  
+  function visitEdges(edge:any, p:any){
+    if (visited[edge.idx]>=1){
+      return;
+    }
+    //console.log(floorCoord(p));
     visited[edge.idx]+=1;
     const f = (edge.dir==1 ? E[edge.idx][1] : E[edge.idx][0]);
     let ecount = 0;
+    console.log("visited",f,incidentEdges(f,E))
     for (let e of incidentEdges(f,E)){
       const q = endpoint(e,p);
       lines.push(line(p,q));
@@ -331,19 +340,19 @@ export function fundDomain(scale:number, V:number[], E:number[][]){
     }
   }
 
-  //const visited = [];
-  const visited = Array(E.length).fill(0);
-  //const visitedPoints = Array(V.length).fill([]);
-  //console.log(V0.length,visitedPoints.length);
+  //const visited = Array(E.length).fill(0);
+  const visited = E.map((_)=>0)
+  const visitedPoints = V.map((_)=>[]);
+  console.log(visited)
   const lines:any[] = [];
-  let start:{idx:number; dir:number}
-  start ={idx:0, dir:1}
-  visitEdges(start,[0,0]);
-  //visitPoints(0,[0,0],0);
+  //let start
+  const start:{idx:number; dir:number} ={idx:0, dir:1}
+  //visitEdges(start,[0,0]);
+  visitPoints(0,[0,0],0);
   //return visited;
   //console.log(lines.length);
   //console.log(visitedPoints);
-  //console.log(visited);
+  console.log(visited);
   //return(<g key={key} transform={"translate(" + scale*translate.x + "," + scale*translate.y + ")"}> {lines} </g>);
   return(lines);
 }

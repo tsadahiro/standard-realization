@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import './App.css'
-import {Stack, Button, TextareaAutosize} from '@mui/material';
+import {FormControlLabel, Radio, RadioGroup, Stack, Button, TextareaAutosize} from '@mui/material';
 import {Lattice2D} from './StdReal.tsx';
+import Lattice3D from './components/Lattice3D';
+import Textarea from '@mui/joy/Textarea';
 
 function App() {
 
@@ -9,6 +10,7 @@ function App() {
   const [eString, setEString] = useState("");
   const [E, setE] = useState<number[][]>([]);
   const [V, setV] = useState<number[]>([]);
+  const [dim, setDim] = useState<number>(2);
 
   function eStringHandler(s:string){
     setEString(s);
@@ -17,7 +19,9 @@ function App() {
   function draw(){
     setDrawing((prev)=>!prev);
     const edgeStrs = eString.split("\n");
-    const edges = edgeStrs.map((es)=>es.split(",").map((vs)=>parseInt(vs,10)));
+    const edges = edgeStrs.map((s)=>s.trim())
+			  .filter(s => s.length > 0)
+			  .map((es)=>es.split(",").map((vs)=>parseInt(vs,10)));
     setE(()=>edges);
     const vertices:number[] = [];
     for (let e of edges){
@@ -41,16 +45,24 @@ function App() {
 		  <Button variant="contained" onClick={draw}>
 		    {drawing? "reset":"draw"}
 		  </Button>
+		  {!drawing && (
+		  <RadioGroup aria-label="gender" name="gender1" value={dim}
+			      onChange={(e)=>{setDim((prev)=>e.target.value)}}>
+		    <FormControlLabel value={2} control={<Radio />} label="2D" />
+		    <FormControlLabel value={3} control={<Radio />} label="3D" />
+		  </RadioGroup>
+		  )}
 		</Stack>
 		{ drawing? <></>:
 		  (
 		      <Stack direction="row">
-			<TextareaAutosize key="areaB"
+			<Textarea key="areaB"
 					  minRows={10}
 					  maxRows={10}
 					  placeholder="edges"
 					  onChange={(e)=>eStringHandler(e.target.value)}
 					  style={{width:300}}
+					  variant="solid"
 			/>
 		      </Stack>
 		    )
@@ -59,10 +71,14 @@ function App() {
 		<Stack>
 		  {drawing?(
 		    <>
-		    <>{V}</>
-		    <svg width={800} height={600}>
-		      {<Lattice2D V={V} E={E}></Lattice2D>}
- 		    </svg>
+		      {dim == 2 ? 
+		      (<svg width={800} height={600}>
+		      <Lattice2D V={V} E={E}></Lattice2D>
+ 		      </svg>)
+		      :
+		      <Lattice3D/>
+		      }
+		      <div>{eString.split("\n").map((e)=><div>{e}</div>)}</div>
 		    </>
 		    ):
 		  (<></>)}
