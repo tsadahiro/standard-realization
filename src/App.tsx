@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import {FormControlLabel, Radio, RadioGroup, Stack, Button, TextareaAutosize} from '@mui/material';
+import {FormControlLabel, Radio, RadioGroup, Stack, Button} from '@mui/material';
 import {Lattice2D} from './StdReal.tsx';
 import Lattice3D from './components/Lattice3D';
 import Textarea from '@mui/joy/Textarea';
@@ -47,7 +47,7 @@ function App() {
 		  </Button>
 		  {!drawing && (
 		  <RadioGroup aria-label="gender" name="gender1" value={dim}
-			      onChange={(e)=>{setDim((prev)=>e.target.value)}}>
+			      onChange={(e:any)=>{setDim((_)=>e.target.value)}}>
 		    <FormControlLabel value={2} control={<Radio />} label="2D" />
 		    <FormControlLabel value={3} control={<Radio />} label="3D" />
 		  </RadioGroup>
@@ -73,12 +73,14 @@ function App() {
 		    <>
 		      {dim == 2 ? 
 		      (<svg width={800} height={600}>
-		      <Lattice2D V={V} E={E}></Lattice2D>
+			<Lattice2D V={V} E={E}></Lattice2D>
  		      </svg>)
 		      :
-		      <Lattice3D/>
+		      <Lattice3D V={V} E={E} />
 		      }
-		      <div>{eString.split("\n").map((e)=><div>{e}</div>)}</div>
+		      <div>
+			{eString.split("\n").map((e)=><div>{e}</div>)}
+		      </div>
 		    </>
 		    ):
 		  (<></>)}

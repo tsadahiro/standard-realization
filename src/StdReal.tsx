@@ -1,22 +1,6 @@
 import * as math from 'mathjs';
-//import { Matrix } from 'mathjs';
+import { Matrix } from 'mathjs';
 
-export function Vertices({vset}:any){
-  let str = "[";
-  for (let i in vset){
-    str = str + vset[i] + ",";
-  }
-  return( <div key={"v"+str}> {str+"]"} </div>)
-}
-
-
-export function Edges(E:number[][]){
-  let str = "";
-  for (let i in E){
-    str = str + "[" + E[i][0] + "," + E[i][1] + "]"
-  }
-  return( <div> {str} </div>);
-}
 
 export function neighbors(v:number,E:number[][]){
   const nei = [];
@@ -44,55 +28,6 @@ export function incidentEdges(v:number,  E:number[][]){
     }
   }
   return inc;
-}
-
-export function CyclesFrom({start,length,E}:{start:number, length:number,  E:number[][]}){
-  const vpaths:any = []
-  const epaths:any = []
-  
-  function visit(w:number, vpath:any, epath:any, l:number){
-
-    if (l <= 0 && w == start){
-      vpaths.push(vpath.slice());
-      epaths.push(epath.slice());
-      return;
-    }
-    else if (l <= 0){
-      return;
-    }
-    
-    for (let e of incidentEdges(w,E)){
-      let n;
-      if (e.dir == 1) {
-	n = E[e.idx][1];
-      }
-      else {
-	n = E[e.idx][0];
-      }
-      if (vpath.includes(n) || n<start) {
-	continue;
-      }
-      let newVpath = vpath.slice();
-      newVpath.push(n);
-      let newEpath = epath.slice();
-      newEpath.push(e);
-    
-      visit(n, newVpath, newEpath, l-1);
-    }
-  }
-    
-  function coefvector(epath:{idx:number,dir:number}[]){
-    const coef = Array(E.length);
-    coef.fill(0);
-    for (let edge of epath){
-      coef[edge.idx]=edge.dir;
-    }
-    return coef;
-  }
-  
-  visit(start,[],[],length);
-  //console.log(epaths.map(coefvector));
-  return(epaths.map((epath:{idx:number,dir:number}[])=><Vertices key={coefvector(epath)} vset={coefvector(epath)}/>));
 }
 
 export function cyclesFrom(start:number, length:number, E:number[][]){
@@ -172,16 +107,19 @@ function incidenceMatrix(V:number[], E:number[][]){
   return A;
 }
 
+// Sunada's topological crystallography pp.146 Summary 2
 export function getA(V:number[], E:number[][]){
   const M = incidenceMatrix(V,E);
   return(math.multiply(M,math.transpose(M)));
 }
 
+
+// Sunada's topological crystallography pp.146 Summary 2
 export function Gamma(V:number[], E:number[][]){
   
   const A = getA(V,E);
-  const b = A.length;
-  const lowids = Array(b-2);
+  const b = A.length; // betch number
+  const lowids = Array(b-2); // for 2D
 
   for (let i=0; i<b-2; i++){
     lowids[i]=i+2;
@@ -222,6 +160,7 @@ export function choleskyDecomposition(A:any) {
   return L;
 }
 
+// compute (small) \gamma
 export function periodBase(V:number[],E:number[][]){
   return(choleskyDecomposition(Gamma(V,E)));
 }
@@ -261,6 +200,7 @@ export function Lattice2D({V,E}:
   return( <>{lines}</> );
 }
 
+// fundamental graph
 export function fundDomain(scale:number, V:number[], E:number[][]){
   //console.log(V,E);
   const C = math.multiply(math.inv(getA(V,E)),incidenceMatrix(V,E));
@@ -271,6 +211,7 @@ export function fundDomain(scale:number, V:number[], E:number[][]){
   //const [ecount, setEcount] = useState(0);
   let ecount = 0;
 
+  // p + v0(e)
   function endpoint(edge:any, p:number[]){
     const v:any = math.squeeze(math.subset(V0 as Matrix,
 					   math.index([0,1], edge.idx))  as math.MathCollection<math.MathNumericType>);
@@ -281,22 +222,16 @@ export function fundDomain(scale:number, V:number[], E:number[][]){
     ecount += 1;
     const key = "key" + ecount;
     return(<line key={key} strokeOpacity={1}
-		 strokeWidth={1}
+		 strokeWidth={2}
 		 x1={scale*p[0]} y1={scale*p[1]}
 		 x2={scale*q[0]} y2={scale*q[1]}
-		 stroke="blue"/>);
+		 stroke="blue"
+	   />);
   }
 
-  function coordPB(p:any){
-    return math.multiply(math.inv(math.transpose(period)),p);
-  }
 
-  function floorCoord(p:any){
-    const x:any = (coordPB(p) as any)[0]+10;
-    const y:any = (coordPB(p) as any)[1]+10;
-    return([x-Math.floor(x), y-Math.floor(y)]);
-  }
 
+  // Euclidean distance from p to q in 2D
   function dist(p:any,q:any){
     return(Math.sqrt((p[0]-q[0])*(p[0]-q[0])+(p[1]-q[1])*(p[1]-q[1])));
   }
@@ -323,31 +258,12 @@ export function fundDomain(scale:number, V:number[], E:number[][]){
     }
   }
   
-  function visitEdges(edge:any, p:any){
-    if (visited[edge.idx]>=1){
-      return;
-    }
-    //console.log(floorCoord(p));
-    visited[edge.idx]+=1;
-    const f = (edge.dir==1 ? E[edge.idx][1] : E[edge.idx][0]);
-    let ecount = 0;
-    console.log("visited",f,incidentEdges(f,E))
-    for (let e of incidentEdges(f,E)){
-      const q = endpoint(e,p);
-      lines.push(line(p,q));
-      visitEdges(e, q);
-      ecount++;
-    }
-  }
 
   //const visited = Array(E.length).fill(0);
   const visited = E.map((_)=>0)
-  const visitedPoints = V.map((_)=>[]);
+  const visitedPoints:number[][] = V.map((_)=>[]);
   console.log(visited)
   const lines:any[] = [];
-  //let start
-  const start:{idx:number; dir:number} ={idx:0, dir:1}
-  //visitEdges(start,[0,0]);
   visitPoints(0,[0,0],0);
   //return visited;
   //console.log(lines.length);
